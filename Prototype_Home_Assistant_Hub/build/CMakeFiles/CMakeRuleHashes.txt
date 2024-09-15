@@ -1,0 +1,4 @@
+# Hashes of file build rules.
+ddc36ce4256e5170b29a569f6bcdfac9 CMakeFiles/Prototype_Home_Assistant_Hub_autogen
+ddc36ce4256e5170b29a569f6bcdfac9 CMakeFiles/Prototype_Home_Assistant_Hub_autogen_timestamp_deps
+ac181d08063c6e6e5da2cc4d9e996d5c Prototype_Home_Assistant_Hub_autogen/timestamp

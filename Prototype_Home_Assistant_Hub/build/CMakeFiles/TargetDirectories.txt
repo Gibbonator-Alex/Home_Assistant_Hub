@@ -1,0 +1,5 @@
+/home/snake/Documents/Git_Projects/Home_Assistant_Hub/Prototype_Home_Assistant_Hub/build/CMakeFiles/Prototype_Home_Assistant_Hub.dir
+/home/snake/Documents/Git_Projects/Home_Assistant_Hub/Prototype_Home_Assistant_Hub/build/CMakeFiles/edit_cache.dir
+/home/snake/Documents/Git_Projects/Home_Assistant_Hub/Prototype_Home_Assistant_Hub/build/CMakeFiles/rebuild_cache.dir
+/home/snake/Documents/Git_Projects/Home_Assistant_Hub/Prototype_Home_Assistant_Hub/build/CMakeFiles/Prototype_Home_Assistant_Hub_autogen_timestamp_deps.dir
+/home/snake/Documents/Git_Projects/Home_Assistant_Hub/Prototype_Home_Assistant_Hub/build/CMakeFiles/Prototype_Home_Assistant_Hub_autogen.dir
