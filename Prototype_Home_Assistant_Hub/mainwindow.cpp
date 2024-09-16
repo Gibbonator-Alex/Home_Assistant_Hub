@@ -1,12 +1,21 @@
 #include "mainwindow.h"
 #include "./ui_prototype_home_assistant_hub.h"
 
-QSize drag;
-QPoint dragPos;
-bool leftResize = false;
-bool topResize = false;
-bool rightResize = false;
-bool bottomResize = false;
+QSize dragWidgetSize;
+QPoint dragWidgetPos;
+int dragWidgetStartPosWidth;
+int dragWidgetStartPosHeight;
+
+struct{
+    const std::string LEFTRESIZETEXT = "LEFTRESIZE";
+    const std::string RIGHTRESIZETEXT = "RIGHTRESIZE";
+    const std::string BOTTOMRESIZETEXT = "BOTTOMRESIZE";
+    const std::string TOPRESIZETEXT = "TOPRESIZE";
+    bool leftResize = false;
+    bool topResize = false;
+    bool rightResize = false;
+    bool bottomResize = false;
+} resizeMethod;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -47,18 +56,21 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
             QPoint localPos = event->pos() - child->pos();
 
             // Bestimme, ob du an der linken oder oberen Seite klickst
-            leftResize = localPos.x() <= margin;
-            topResize = localPos.y() <= margin;
-            rightResize = localPos.x() >= widgetRect.width() - margin;
-            bottomResize = localPos.y() >= widgetRect.height() - margin;
+            resizeMethod.leftResize = localPos.x() <= margin;
+            resizeMethod.topResize = localPos.y() <= margin;
+            resizeMethod.rightResize = localPos.x() >= widgetRect.width() - margin;
+            resizeMethod.bottomResize = localPos.y() >= widgetRect.height() - margin;
 
             // Überprüfe, ob der Klick an einer Ecke oder Kante ist, um Resize zu aktivieren
-            if (leftResize || rightResize || topResize || bottomResize) 
+            if (resizeMethod.leftResize || resizeMethod.rightResize || resizeMethod.topResize || resizeMethod.bottomResize) 
             {
                 resizeMode = true;
                 dragWidget = child;
-                drag = dragWidget->size();
-                dragPos = dragWidget->pos();
+                dragWidgetSize = dragWidget->size();
+                dragWidgetPos = dragWidget->pos();
+                dragWidgetStartPosWidth = dragWidget->width();
+                dragWidgetStartPosHeight= dragWidget->height();
+                qDebug() << "DRAGWIDGET HEIGHT: " << dragWidget->height() << "--------------";
                 dragStartPos = event->pos();
             }
             else {
@@ -87,29 +99,29 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
         if(resizeMode)
         {
             QPoint diff = event->pos() - dragStartPos;
-            QSize newSize = drag + QSize(diff.x(), diff.y());
+            QSize newSize = dragWidgetSize + QSize(diff.x(), diff.y());
 
-            if (leftResize) {
+            if (resizeMethod.leftResize) {
                 // Wenn wir von der linken Seite ziehen, ändere die Position und Größe
-                int newX = dragPos.x() + diff.x();
-                int newWidth = drag.width() - diff.x();
-                dragWidget->setGeometry(newX, dragPos.y(), newWidth, drag.height());
+                int newX = dragWidgetPos.x() + diff.x();
+                int newWidth = dragWidgetSize.width() - diff.x();
+                dragWidget->setGeometry(newX, dragWidgetPos.y(), newWidth, dragWidgetSize.height());
             }
-            else if (rightResize) {
+            else if (resizeMethod.rightResize) {
                 // Wenn wir von der rechten Seite ziehen, ändere die Breite
-                int newWidth = drag.width() + diff.x();
-                dragWidget->resize(newWidth, drag.height());
+                int newWidth = dragWidgetSize.width() + diff.x();
+                dragWidget->resize(newWidth, dragWidgetSize.height());
             }
-            else if (topResize) {
+            else if (resizeMethod.topResize) {
                 // Wenn wir von der oberen Seite ziehen, ändere die Position und Größe
-                int newY = dragPos.y() + diff.y();
-                int newHeight = drag.height() - diff.y();
-                dragWidget->setGeometry(dragPos.x(), newY, drag.width(), newHeight);
+                int newY = dragWidgetPos.y() + diff.y();
+                int newHeight = dragWidgetSize.height() - diff.y();
+                dragWidget->setGeometry(dragWidgetPos.x(), newY, dragWidgetSize.width(), newHeight);
             }
-            else if (bottomResize) {
+            else if (resizeMethod.bottomResize) {
                 // Wenn wir von der unteren Seite ziehen, ändere die Höhe
-                int newHeight = drag.height() + diff.y();
-                dragWidget->resize(drag.width(), newHeight);
+                int newHeight = dragWidgetSize.height() + diff.y();
+                dragWidget->resize(dragWidgetSize.width(), newHeight);
             }
         }
         else {
@@ -122,26 +134,30 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
-int MainWindow::calculateGridItemDistance(const QPoint &pointA, const QPoint &pointB, const QGridLayout &gridLayout, const std::string &resizeMethod)
+int MainWindow::calculateGridItemDistance(const QPoint &pointA, const QPoint &pointB, const QGridLayout &gridLayout, const std::string &resizeString)
 {
-    int cellWidth = ui->frame_main->width() / gridLayout.columnCount();
-    int cellHeight = ui->frame_main->height() / gridLayout.rowCount();
+    qDebug() << "POINTA: " << pointA << " POINTB: " << pointB;
+    //int cellWidth = ui->frame_main->width() / gridLayout.columnCount();
+    //int cellHeight = ui->frame_main->height() / gridLayout.rowCount();
+    int cellWidth = (ui->frame_main->width() - (gridLayout.columnCount() - 1) * gridLayout.horizontalSpacing()) / gridLayout.columnCount();
+    int cellHeight = (ui->frame_main->height() - (gridLayout.rowCount() - 1) * gridLayout.verticalSpacing()) / gridLayout.rowCount();
+    qDebug() << "cellheight: " << cellHeight << "cellwidth: " << cellWidth;
 
     int distance = 1;
-    if(resizeMethod == "LEFT" || resizeMethod == "RIGHT"){
+    if(resizeString == resizeMethod.LEFTRESIZETEXT || resizeString == resizeMethod.RIGHTRESIZETEXT){
         int columnA = pointA.x() / cellWidth;
         int columnB = pointB.x() / cellWidth;
+        qDebug() << "COLA: " << columnA << " COLB: " << columnB;
         distance = std::abs(columnA - columnB);
     }
-    else if(resizeMethod == "TOP" || resizeMethod == "BOTTOM"){
-        int rowB = pointB.y() / cellHeight;
+    else if(resizeString == resizeMethod.TOPRESIZETEXT || resizeString == resizeMethod.BOTTOMRESIZETEXT){
         int rowA = pointA.y() / cellHeight;
+        int rowB = pointB.y() / cellHeight;
+        qDebug() << "ROWA: " << rowA << " ROWB: " << rowB;
         distance = std::abs(rowA - rowB);
+        qDebug() << "rowA" << rowA << "rowB: " << rowB << "abs:" <<std::abs(rowA - rowB) << " without: " << rowA-rowB;
     }
-
-    if(distance == 0){
-        distance = 1;
-    }
+    distance++;
 
     return distance;
 }
@@ -182,6 +198,25 @@ void MainWindow::resetGridLayout(QGridLayout *gridLayout){
     }
 }
 
+bool MainWindow::checkIfObjectIsInRowCol(const QGridLayout *gridLayout, const int &row, const int &column)
+{
+    if(gridLayout->itemAtPosition(row, column)){
+        QLayoutItem *item = gridLayout->itemAtPosition(row, column);
+        if (item) {
+            QWidget *widget = item->widget();
+            if (ResizableFrame *resizableFrame = qobject_cast<ResizableFrame*>(widget)) {
+                if(!(resizableFrame == dragWidget)){
+                    qDebug() << "Das Widget ist nicht das selbe ResizableFrame!";
+                    return false;
+                }
+            } else {
+                return true;
+            }
+        }
+    }
+    return true;
+}
+
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     QGridLayout *gridLayout = qobject_cast<QGridLayout*>(ui->frame_main->layout());
@@ -193,87 +228,75 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             qDebug() << "GRIDLAYOUT ROWS: " << gridLayout->rowCount() << " COLS: " << gridLayout->columnCount();
             if (gridLayout) {
                 QPoint globalPos, layoutPos;
-                if(rightResize || bottomResize){
+                if(resizeMethod.rightResize || resizeMethod.bottomResize){
+                    qDebug() << "rightbottom";
                     globalPos = dragWidget->mapToGlobal(dragWidget->rect().bottomRight());
-                    layoutPos = ui->frame_main->mapFromGlobal(globalPos);
+                    //layoutPos = ui->frame_main->mapFromGlobal(globalPos);
+                    layoutPos = dragWidget->mapTo(ui->frame_main, QPoint(dragWidget->width(), dragWidget->height()));
                 }
                 else{
+                    qDebug() << "lefttop";
                     globalPos = dragWidget->mapToGlobal(dragWidget->rect().topLeft());
-                    layoutPos = ui->frame_main->mapFromGlobal(globalPos); 
+                    //layoutPos = ui->frame_main->mapFromGlobal(globalPos);
+                    layoutPos = dragWidget->mapTo(ui->frame_main, QPoint(0, 0));
                 }
                 qDebug() << "Layoutpos: " << layoutPos;
                 qDebug() << "Globalpos: " << globalPos;
                 
                 int column, row, columnSpan = 1, rowSpan = 1;
-                int cellWidth = ui->frame_main->width() / gridLayout->columnCount();
-                int cellHeight = ui->frame_main->height() / gridLayout->rowCount();
+                //int cellWidth = (ui->frame_main->width() / gridLayout->columnCount());
+                //int cellHeight = (ui->frame_main->height() / gridLayout->rowCount());
+
+                int cellWidth = (ui->frame_main->width() - (gridLayout->columnCount() - 1) * gridLayout->horizontalSpacing()) / gridLayout->columnCount();
+                int cellHeight = (ui->frame_main->height() - (gridLayout->rowCount() - 1) * gridLayout->verticalSpacing()) / gridLayout->rowCount();
+
+                qDebug() << "cellheight: " << cellHeight << "cellwidth: " << cellWidth << " frame height: " << ui->frame_main->height() << " rowcount: " << gridLayout->rowCount();
 
                 column = layoutPos.x() / cellWidth;
+                if(column < 0){
+                    qDebug() << "incol";
+                    column = dragWidget->property("gridColumn").toInt();
+                }
                 row = layoutPos.y() / cellHeight;
+                if(row < 0){
+                    qDebug() << "inrow";
+                    row = dragWidget->property("gridRow").toInt();
+                }
+                qDebug() << "ROW: " << row << " COL: " << column;
 
                 columnSpan = dragWidget->property("gridColumnSpan").toInt();
                 rowSpan = dragWidget->property("gridRowSpan").toInt();
 
-                if(gridLayout->itemAtPosition(row, column)){
-                    QLayoutItem *item = gridLayout->itemAtPosition(row, column);
-                    //Wenn columnspan oder rowspan, prüfe, ob in jeder Kachel daneben kein Item vorhanden ist!
-                    //Momentan prüft es nur da wo ich mit der Maus hinziehe und wenn diese eine leere ist, dann schiebt es sich darein, auch, wenn
-                    //die Kachel daneben drunter drüber ein Item enthält 
-                    if (item) {
-                        QWidget *widget = item->widget();
-                        qDebug() << "ITEMATPOSITION: ITEM: " << widget <<  " ROW: " << row << " COL: " << column;
-                        if (ResizableFrame *resizableFrame = qobject_cast<ResizableFrame*>(widget)) {
-                            if(!(resizableFrame == dragWidget)){
-                                qDebug() << "Das Widget ist ein ResizableFrame!";
-                                column = dragWidget->property("gridColumn").toInt();
-                                row = dragWidget->property("gridRow").toInt();
-                            }
-                            if(rightResize){
-                                qDebug() << "RIGHTRESIZE";
-                                columnSpan = calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "RIGHT");
-                                column = dragWidget->property("gridColumn").toInt();
-                                row = dragWidget->property("gridRow").toInt();
-                            }
-                            else if(leftResize){
-                                qDebug() << "LEFTRESIZE";
-                                columnSpan = calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "LEFT");
-                            }
-                            else if(bottomResize){
-                                qDebug() << "BOTTOMRESIZE";
-                                rowSpan = calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "BOTTOM");
-                                column = dragWidget->property("gridColumn").toInt();
-                                row = dragWidget->property("gridRow").toInt();
-                            }
-                            else if(topResize){
-                                qDebug() << "TOPRESIZE";
-                                rowSpan = calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "TOP");
-                            }
-                        } else {
-                            qDebug() << "Das Widget ist kein ResizableFrame.";
-                        }
+                if(checkIfObjectIsInRowCol(gridLayout, row, column)){
+                    if(resizeMethod.rightResize){
+                        qDebug() << "RIGHTRESIZE";
+                        columnSpan = calculateGridItemDistance(layoutPos, dragWidgetPos, *gridLayout, resizeMethod.RIGHTRESIZETEXT);
+                        column = dragWidget->property("gridColumn").toInt();
+                        row = dragWidget->property("gridRow").toInt();
+                    }
+                    else if(resizeMethod.leftResize){
+                        qDebug() << "LEFTRESIZE";
+                        QPoint positionA = ui->frame_main->mapToGlobal(event->pos());
+                        QPoint positionB(dragWidgetPos.x() + dragWidgetStartPosWidth, dragWidgetPos.y());
+                        columnSpan = calculateGridItemDistance(positionA, positionB, *gridLayout, resizeMethod.LEFTRESIZETEXT);
+                    }
+                    else if(resizeMethod.bottomResize){
+                        qDebug() << "BOTTOMRESIZE";
+                        rowSpan = calculateGridItemDistance(layoutPos, dragWidgetPos, *gridLayout, resizeMethod.BOTTOMRESIZETEXT);
+                        column = dragWidget->property("gridColumn").toInt();
+                        row = dragWidget->property("gridRow").toInt();
+                    }
+                    else if(resizeMethod.topResize){
+                        qDebug() << "TOPRESIZE";
+                        QPoint positionA = ui->frame_main->mapToGlobal(event->pos());
+                        QPoint positionB(dragWidgetPos.x() + dragWidgetStartPosWidth, dragWidgetPos.y() + dragWidgetStartPosHeight);
+                        qDebug() << "StartpositionHeight" << dragWidgetStartPosHeight;
+                        rowSpan = calculateGridItemDistance(positionA, positionB, *gridLayout, resizeMethod.TOPRESIZETEXT);
                     }
                 }
                 else{
-                   if(rightResize){
-                        qDebug() << "RIGHTRESIZE";
-                        columnSpan = columnSpan + calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "RIGHT");
-                        column = dragWidget->property("gridColumn").toInt();
-                        row = dragWidget->property("gridRow").toInt();
-                    }
-                    else if(leftResize){
-                        qDebug() << "LEFTRESIZE";
-                        columnSpan = columnSpan + calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "LEFT");
-                    }
-                    else if(bottomResize){
-                        qDebug() << "BOTTOMRESIZE";
-                        rowSpan = rowSpan + calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "BOTTOM");
-                        column = dragWidget->property("gridColumn").toInt();
-                        row = dragWidget->property("gridRow").toInt();
-                    }
-                    else if(topResize){
-                        qDebug() << "TOPRESIZE";
-                        rowSpan = rowSpan + calculateGridItemDistance(layoutPos, dragPos, *gridLayout, "TOP");
-                    }
+                    column = dragWidget->property("gridColumn").toInt();
+                    row = dragWidget->property("gridRow").toInt();
                 }
 
                 qDebug() << "ROW: " << row << " COL: " << column << " ROWSPAN: " << rowSpan << " COLSPAN: "<< columnSpan;
@@ -283,10 +306,10 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
             }
         }
         resizeMode = false;
-        leftResize = false;
-        topResize = false;
-        rightResize = false;
-        bottomResize = false;
+        resizeMethod.leftResize = false;
+        resizeMethod.topResize = false;
+        resizeMethod.rightResize = false;
+        resizeMethod.bottomResize = false;
         dragWidget = nullptr;
     }
 }

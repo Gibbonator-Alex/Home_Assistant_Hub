@@ -29,6 +29,7 @@ private:
 
     int calculateGridItemDistance(const QPoint &pointA, const QPoint &pointB, const QGridLayout &gridLayout, const std::string &resizeMethod);
     void resetGridLayout(QGridLayout *gridLayout);
+    bool checkIfObjectIsInRowCol(const QGridLayout *gridLayout, const int &row, const int &column);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
