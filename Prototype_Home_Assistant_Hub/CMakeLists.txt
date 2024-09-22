@@ -7,11 +7,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.h
-        mainwindow.cpp
-        prototype_home_assistant_hub.ui
-        resizableframe.cpp
+        include/mainwindow.h
+        include/resizableframe.h
+        include/gridItemMover/gridItemMover.h
+        
+        src/main.cpp
+        src/mainwindow.cpp
+        src/resizableframe.cpp
+        src/gridItemMover/gridItemMover.cpp
+        
+        ui/prototype_home_assistant_hub.ui
 )
 
 find_package(Qt5Widgets REQUIRED)
