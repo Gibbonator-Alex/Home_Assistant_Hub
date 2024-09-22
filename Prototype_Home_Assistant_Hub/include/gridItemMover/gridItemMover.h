@@ -30,6 +30,10 @@ private:
     QPoint dragWidgetStartPositionLocalPosTopLeft;
     QPoint dragWidgetStartPositionLocalPosBottomRight;
     const int WIDGETMARGIN = 20;
+    int rowDragWidgetStartPosition;
+    int columnDragWidgetStartPosition;
+    int rowSpanDragWidgetStartPosition;
+    int columnSpanDragWidgetStartPosition;
 
 public:
     GridItemMover();
@@ -49,7 +53,7 @@ private:
     void changeColumn(QList<QWidget*> widgets, const int &column);
     void removeWidgetsFromGrid(QGridLayout *gridLayout, QList<QWidget*> widgets);
     void setWidgetsOnGrid(QGridLayout *gridLayout, QList<QWidget*> widgets);
-    bool checkIfObjectIsInRowCol(const QGridLayout &gridLayout, const QPoint &movedDragWidgetLocalPosTopLeft, const QPoint &movedDragWidgetLocalPosBottomRight);
+    bool checkIfObjectIsInRowCol(QGridLayout *gridLayout, const QPoint &movedDragWidgetLocalPosTopLeft, const QPoint &movedDragWidgetLocalPosBottomRight);
     bool checkIfIntervall(const QPoint& xPosPair1, const QPoint& xPosPair2, const QPoint& yPosPair1, const QPoint& yPosPair2);
     bool isItemInColumn(const QGridLayout &gridLayout, const int &index);
     bool isItemInRow(const QGridLayout &gridLayout, const int &index);
@@ -57,4 +61,7 @@ private:
     int calculateGridItemDistance(const QGridLayout &gridLayout, const int &startPos, const int &endPos);
     int getGridCellHeight(const QGridLayout &gridLayout);
     QList<QWidget*> saveGridWidgetsToList(const QGridLayout &gridLayout);
+    QList<QPair<int, int>> calculateOccupiedCellsFromFrames(const QGridLayout &gridLayout, bool getDragWidgetCells);
+    void resizeAndPositionWidget(QGridLayout *gridLayout, int rowMovedDragWidgetStartPosition, int columnMovedDragWidgetStartPosition);
+    QPair<int, int> calculateRowColumnPosition(const QGridLayout &gridLayout, QPoint movedDragWidgetLocalPosTopLeft, QPoint movedDragWidgetLocalPosBottomRight);
 };

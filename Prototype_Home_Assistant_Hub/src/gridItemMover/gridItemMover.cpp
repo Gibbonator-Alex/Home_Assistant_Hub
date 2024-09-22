@@ -48,53 +48,16 @@ void GridItemMover::handleMouseReleaseEvent(QMouseEvent *event)
                 QPoint movedDragWidgetLocalPosTopLeft = dragWidget->mapTo(this->frame, QPoint(0, 0));
                 QPoint movedDragWidgetLocalPosBottomRight = dragWidget->mapTo(this->frame, QPoint(dragWidget->width(), dragWidget->height()));
 
-                int rowDragWidgetStartPosition = dragWidget->property("gridRow").toInt();
-                int columnDragWidgetStartPosition = dragWidget->property("gridColumn").toInt();
-                int rowSpanDragWidgetStartPosition = dragWidget->property("gridRowSpan").toInt();
-                int columnSpanDragWidgetStartPosition = dragWidget->property("gridColumnSpan").toInt();
-
-                int cellWidth = getGridCellWidth(*gridLayout);
-                int cellHeight = getGridCellHeight(*gridLayout);
+                rowDragWidgetStartPosition = dragWidget->property("gridRow").toInt();
+                columnDragWidgetStartPosition = dragWidget->property("gridColumn").toInt();
+                rowSpanDragWidgetStartPosition = dragWidget->property("gridRowSpan").toInt();
+                columnSpanDragWidgetStartPosition = dragWidget->property("gridColumnSpan").toInt();
                 
-                int columnMovedDragWidgetStartPosition, rowMovedDragWidgetStartPosition, columnSpanMovedDragWidgetStartPosition, rowSpanMovedDragWidgetStartPosition;
-                
-                if(resizeMethod.rightResize){
-                    rowMovedDragWidgetStartPosition = rowDragWidgetStartPosition;
-                    columnMovedDragWidgetStartPosition = movedDragWidgetLocalPosBottomRight.x() / (cellWidth + gridLayout->horizontalSpacing());
-                }
-                else if(resizeMethod.leftResize){
-                    rowMovedDragWidgetStartPosition = rowDragWidgetStartPosition;
-                    columnMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.x() / (cellWidth + gridLayout->horizontalSpacing());
-                }
-                else if(resizeMethod.topResize){
-                    rowMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.y() / (cellHeight + gridLayout->verticalSpacing());
-                    columnMovedDragWidgetStartPosition = columnDragWidgetStartPosition;
-                }
-                else if(resizeMethod.bottomResize){
-                    rowMovedDragWidgetStartPosition = movedDragWidgetLocalPosBottomRight.y() / (cellHeight + gridLayout->verticalSpacing());
-                    columnMovedDragWidgetStartPosition = columnDragWidgetStartPosition;
-                }
-                else{
-                    //rowMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.y() / (cellHeight + gridLayout->verticalSpacing());
-                    //columnMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.x() / (cellWidth + gridLayout->horizontalSpacing());
-                    if(movedDragWidgetLocalPosTopLeft == dragWidgetStartPositionLocalPosTopLeft && movedDragWidgetLocalPosBottomRight == dragWidgetStartPositionLocalPosBottomRight){
-                        rowMovedDragWidgetStartPosition = rowDragWidgetStartPosition;
-                        columnMovedDragWidgetStartPosition = columnDragWidgetStartPosition;
-                    }
-                    else{
-                        rowMovedDragWidgetStartPosition = ((movedDragWidgetLocalPosTopLeft.y() + movedDragWidgetLocalPosBottomRight.y()) / 2) / (cellHeight + gridLayout->verticalSpacing());
-                        columnMovedDragWidgetStartPosition = ((movedDragWidgetLocalPosTopLeft.x() + movedDragWidgetLocalPosBottomRight.x()) / 2) / (cellWidth + gridLayout->horizontalSpacing());
-                    }
-                }
+                QPair<int, int> pair = calculateRowColumnPosition(*gridLayout, movedDragWidgetLocalPosTopLeft, movedDragWidgetLocalPosBottomRight);
+                int rowMovedDragWidgetStartPosition = pair.first;
+                int columnMovedDragWidgetStartPosition = pair.second;
 
-                if(rowMovedDragWidgetStartPosition < 0){
-                    rowMovedDragWidgetStartPosition = dragWidget->property("gridRow").toInt();
-                }
-                if(columnMovedDragWidgetStartPosition < 0){
-                    columnMovedDragWidgetStartPosition = dragWidget->property("gridColumn").toInt();
-                }
-
-                if(!checkIfObjectIsInRowCol(*gridLayout, movedDragWidgetLocalPosTopLeft, movedDragWidgetLocalPosBottomRight)){
+                if(!checkIfObjectIsInRowCol(gridLayout, movedDragWidgetLocalPosTopLeft, movedDragWidgetLocalPosBottomRight)){
                     if(!resizeMethod.leftResize && !resizeMethod.rightResize && !resizeMethod.topResize && !resizeMethod.bottomResize){
                         // Draging without resizing!
                         gridLayout->removeWidget(dragWidget);
@@ -103,25 +66,12 @@ void GridItemMover::handleMouseReleaseEvent(QMouseEvent *event)
                     }
                     else{
                         // Resizing!
-                        if(resizeMethod.leftResize){
-                            int column = (dragWidgetStartPositionLocalPosBottomRight.x() - (gridLayout->columnCount() * gridLayout->horizontalSpacing())) / cellWidth;
-                            int columnSpan = calculateGridItemDistance(*gridLayout, columnMovedDragWidgetStartPosition, column);
-                            gridLayout->addWidget(dragWidget, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition, rowSpanDragWidgetStartPosition, columnSpan);
-                        }
-                        else if(resizeMethod.rightResize){
-                            int columnSpan = calculateGridItemDistance(*gridLayout, columnDragWidgetStartPosition, columnMovedDragWidgetStartPosition);
-                            gridLayout->addWidget(dragWidget, rowDragWidgetStartPosition, columnDragWidgetStartPosition, rowSpanDragWidgetStartPosition, columnSpan);
-                        }
-                        else if(resizeMethod.bottomResize){
-                            int rowSpan = calculateGridItemDistance(*gridLayout, rowDragWidgetStartPosition, rowMovedDragWidgetStartPosition);
-                            gridLayout->addWidget(dragWidget, rowDragWidgetStartPosition, columnDragWidgetStartPosition, rowSpan, columnSpanDragWidgetStartPosition);
-                        }
-                        else if(resizeMethod.topResize){
-                            int row = (dragWidgetStartPositionLocalPosBottomRight.y() - (gridLayout->rowCount() * gridLayout->verticalSpacing())) / cellHeight;
-                            int rowSpan = calculateGridItemDistance(*gridLayout, rowMovedDragWidgetStartPosition, row);
-                            gridLayout->addWidget(dragWidget, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition, rowSpan, columnSpanDragWidgetStartPosition);
-                        }
+                        resizeAndPositionWidget(gridLayout, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition);
                     }
+                }
+                else{
+                    gridLayout->removeWidget(dragWidget);
+                    gridLayout->addWidget(dragWidget, rowDragWidgetStartPosition, columnDragWidgetStartPosition, rowSpanDragWidgetStartPosition, columnSpanDragWidgetStartPosition);
                 }
             }
             setWidgetProperties(*gridLayout, dragWidget);
@@ -133,6 +83,54 @@ void GridItemMover::handleMouseReleaseEvent(QMouseEvent *event)
         resizeMethod.bottomResize = false;
         dragWidget = nullptr;
     }
+}
+
+QPair<int, int> GridItemMover::calculateRowColumnPosition(const QGridLayout &gridLayout, QPoint movedDragWidgetLocalPosTopLeft, QPoint movedDragWidgetLocalPosBottomRight)
+{
+    int cellWidth = getGridCellWidth(gridLayout);
+    int cellHeight = getGridCellHeight(gridLayout);
+
+    int rowMovedDragWidgetStartPosition;
+    int columnMovedDragWidgetStartPosition;
+
+    if(resizeMethod.rightResize){
+        rowMovedDragWidgetStartPosition = rowDragWidgetStartPosition;
+        columnMovedDragWidgetStartPosition = movedDragWidgetLocalPosBottomRight.x() / (cellWidth + gridLayout.horizontalSpacing());
+    }
+    else if(resizeMethod.leftResize){
+        rowMovedDragWidgetStartPosition = rowDragWidgetStartPosition;
+        columnMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.x() / (cellWidth + gridLayout.horizontalSpacing());
+    }
+    else if(resizeMethod.topResize){
+        rowMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.y() / (cellHeight + gridLayout.verticalSpacing());
+        columnMovedDragWidgetStartPosition = columnDragWidgetStartPosition;
+    }
+    else if(resizeMethod.bottomResize){
+        rowMovedDragWidgetStartPosition = movedDragWidgetLocalPosBottomRight.y() / (cellHeight + gridLayout.verticalSpacing());
+        columnMovedDragWidgetStartPosition = columnDragWidgetStartPosition;
+    }
+    else{
+        //rowMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.y() / (cellHeight + gridLayout.verticalSpacing());
+        //columnMovedDragWidgetStartPosition = movedDragWidgetLocalPosTopLeft.x() / (cellWidth + gridLayout.horizontalSpacing());
+        if(movedDragWidgetLocalPosTopLeft == dragWidgetStartPositionLocalPosTopLeft && movedDragWidgetLocalPosBottomRight == dragWidgetStartPositionLocalPosBottomRight){
+            rowMovedDragWidgetStartPosition = rowDragWidgetStartPosition;
+            columnMovedDragWidgetStartPosition = columnDragWidgetStartPosition;
+        }
+        else{
+            rowMovedDragWidgetStartPosition = ((movedDragWidgetLocalPosTopLeft.y() + movedDragWidgetLocalPosBottomRight.y()) / 2) / (cellHeight + gridLayout.verticalSpacing());
+            columnMovedDragWidgetStartPosition = ((movedDragWidgetLocalPosTopLeft.x() + movedDragWidgetLocalPosBottomRight.x()) / 2) / (cellWidth + gridLayout.horizontalSpacing());
+        }
+    }
+
+    if(rowMovedDragWidgetStartPosition < 0){
+        rowMovedDragWidgetStartPosition = dragWidget->property("gridRow").toInt();
+    }
+    if(columnMovedDragWidgetStartPosition < 0){
+        columnMovedDragWidgetStartPosition = dragWidget->property("gridColumn").toInt();
+    }
+
+
+    return QPair<int, int>(rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition);
 }
 
 void GridItemMover::checkClickedOnWhichSideOfTheWidget(const QPoint &localPos, const QRect &widgetRect)
@@ -178,6 +176,7 @@ void GridItemMover::setWidgetProperties(const QGridLayout &gridLayout, QWidget *
     widget->setProperty("gridColumn", column);
     widget->setProperty("gridRowSpan", rowSpan);
     widget->setProperty("gridColumnSpan", columnSpan);
+    ResizableFrame *frame = qobject_cast<ResizableFrame*>(widget);
 }
 
 void GridItemMover::resizeWidgetBasedOnMouseMovement(QMouseEvent *event)
@@ -223,13 +222,60 @@ int GridItemMover::getGridCellHeight(const QGridLayout &gridLayout)
     return (this->frame->height() - ((gridLayout.rowCount() - 1) * gridLayout.verticalSpacing())) / gridLayout.rowCount();
 }
 
-/*
- *There is still a bug in the function: If a widget is first enlarged and then only moved, it can still be dragged into the tile of another widget 
- *despite not colliding with other widgets due to its current size. This is because the centre point of the widget is used for positioning in a tile.
- *Although this centre point may be outside the dimension of other widgets, the columnSpan or rowSpan of the widget to be dragged will still cause it to 
- *slide into neighbouring tiles.
-*/
-bool GridItemMover::checkIfObjectIsInRowCol(const QGridLayout &gridLayout, const QPoint &movedDragWidgetLocalPosTopLeft, const QPoint &movedDragWidgetLocalPosBottomRight)
+void GridItemMover::resizeAndPositionWidget(QGridLayout *gridLayout, int rowMovedDragWidgetStartPosition, int columnMovedDragWidgetStartPosition)
+{
+    int cellWidth = getGridCellWidth(*gridLayout);
+    int cellHeight = getGridCellHeight(*gridLayout);
+
+    if(resizeMethod.leftResize){
+        int column = (dragWidgetStartPositionLocalPosBottomRight.x() - (gridLayout->columnCount() * gridLayout->horizontalSpacing())) / cellWidth;
+        int columnSpan = calculateGridItemDistance(*gridLayout, columnMovedDragWidgetStartPosition, column);
+        gridLayout->addWidget(dragWidget, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition, rowSpanDragWidgetStartPosition, columnSpan);
+    }
+    else if(resizeMethod.rightResize){
+        int columnSpan = calculateGridItemDistance(*gridLayout, columnDragWidgetStartPosition, columnMovedDragWidgetStartPosition);
+        gridLayout->addWidget(dragWidget, rowDragWidgetStartPosition, columnDragWidgetStartPosition, rowSpanDragWidgetStartPosition, columnSpan);
+    }
+    else if(resizeMethod.bottomResize){
+        int rowSpan = calculateGridItemDistance(*gridLayout, rowDragWidgetStartPosition, rowMovedDragWidgetStartPosition);
+        gridLayout->addWidget(dragWidget, rowDragWidgetStartPosition, columnDragWidgetStartPosition, rowSpan, columnSpanDragWidgetStartPosition);
+    }
+    else if(resizeMethod.topResize){
+        int row = (dragWidgetStartPositionLocalPosBottomRight.y() - (gridLayout->rowCount() * gridLayout->verticalSpacing())) / cellHeight;
+        int rowSpan = calculateGridItemDistance(*gridLayout, rowMovedDragWidgetStartPosition, row);
+        gridLayout->addWidget(dragWidget, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition, rowSpan, columnSpanDragWidgetStartPosition);
+    }
+}
+
+QList<QPair<int, int>> GridItemMover::calculateOccupiedCellsFromFrames(const QGridLayout &gridLayout, bool getDragWidgetCells)
+{
+    QList<QPair<int, int>> occupiedCells;
+
+    for (int i = 0; i < gridLayout.count(); ++i) {
+        QLayoutItem *item = gridLayout.itemAt(i);
+        if (item) {
+            QWidget *widget = item->widget();
+            if(ResizableFrame *resizableFrameWidget = qobject_cast<ResizableFrame*>(widget)){
+                int row, column, rowSpan, columnSpan;
+                gridLayout.getItemPosition(i, &row, &column, &rowSpan, &columnSpan);
+
+                for (int r = row; r < row + rowSpan; ++r) {
+                    for (int c = column; c < column + columnSpan; ++c) {
+                        if(resizableFrameWidget != dragWidget && !getDragWidgetCells){
+                            occupiedCells.append(QPair<int, int>(r, c));
+                        }
+                        else if(resizableFrameWidget == dragWidget && getDragWidgetCells){
+                            occupiedCells.append(QPair<int, int>(r, c));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return occupiedCells;
+}
+
+bool GridItemMover::checkIfObjectIsInRowCol(QGridLayout *gridLayout, const QPoint &movedDragWidgetLocalPosTopLeft, const QPoint &movedDragWidgetLocalPosBottomRight)
 {
     QPoint x = QPoint(movedDragWidgetLocalPosTopLeft.x(), movedDragWidgetLocalPosBottomRight.x());
     QPoint y = QPoint(movedDragWidgetLocalPosTopLeft.y(), movedDragWidgetLocalPosBottomRight.y());
@@ -239,30 +285,26 @@ bool GridItemMover::checkIfObjectIsInRowCol(const QGridLayout &gridLayout, const
         return true;
     }
 
-    QMap<int, pointPairXY> framePositionMap;
-    for (int i = 0; i < gridLayout.count(); i++){
-        QLayoutItem *item = gridLayout.itemAt(i);
-        if (item) {
-            QWidget *widget = item->widget();
-            if(ResizableFrame *resizableFrameWidget = qobject_cast<ResizableFrame*>(widget)){
-                if(resizableFrameWidget != dragWidget){
-                    QPoint frameTopLeft = resizableFrameWidget->mapTo(this->frame, QPoint(0, 0));
-                    QPoint frameBottomRight = resizableFrameWidget->mapTo(this->frame, QPoint(resizableFrameWidget->width(), resizableFrameWidget->height()));
+    QPair<int, int> pair = calculateRowColumnPosition(*gridLayout, movedDragWidgetLocalPosTopLeft, movedDragWidgetLocalPosBottomRight);
+    int rowMovedDragWidgetStartPosition = pair.first;
+    int columnMovedDragWidgetStartPosition = pair.second;
 
-                    QPoint x = QPoint(frameTopLeft.x(), frameTopLeft.x() + resizableFrameWidget->width());
-                    QPoint y = QPoint(frameBottomRight.y() - resizableFrameWidget->height(), frameBottomRight.y());
-                    pointPairXY pair = {x,y};
-
-                    framePositionMap.insert(i, pair);
-                }
-            }
-        }
+    gridLayout->removeWidget(dragWidget);
+    if(resizeMethod.leftResize || resizeMethod.rightResize || resizeMethod.topResize || resizeMethod.bottomResize){
+        resizeAndPositionWidget(gridLayout, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition);
     }
+    else{
+        gridLayout->addWidget(dragWidget, rowMovedDragWidgetStartPosition, columnMovedDragWidgetStartPosition, rowSpanDragWidgetStartPosition, columnSpanDragWidgetStartPosition);
+    }
+    
+    QList<QPair<int, int>> occupiedCells = calculateOccupiedCellsFromFrames(*gridLayout, false);
+    QList<QPair<int, int>> occupiedCellsDragWidget = calculateOccupiedCellsFromFrames(*gridLayout, true);
 
-    QMap<int, pointPairXY>::iterator it;
-    for (it = framePositionMap.begin(); it != framePositionMap.end(); ++it){
-        if(checkIfIntervall(movedWidgetPair.xPosPair, it.value().xPosPair, movedWidgetPair.yPosPair, it.value().yPosPair)){
-            return true;
+    for (int i = 0; i < occupiedCells.size(); i++) {
+        for(int j = 0; j < occupiedCellsDragWidget.size(); j++){
+            if (occupiedCellsDragWidget[j].first == occupiedCells[i].first && occupiedCellsDragWidget[j].second == occupiedCells[i].second){
+                return true;
+            }
         }
     }
 
@@ -287,6 +329,10 @@ int GridItemMover::calculateGridItemDistance(const QGridLayout &gridLayout, cons
     return distance;
 }
 
+/*
+ *Bug with the purple widget if you drag the black one and then place it over it.
+ *The purple widget changes its position although this should not be the case
+*/
 void GridItemMover::resetGridLayout(QGridLayout *gridLayout)
 {
     QList<QWidget*> widgets = saveGridWidgetsToList(*gridLayout);
@@ -297,8 +343,22 @@ void GridItemMover::resetGridLayout(QGridLayout *gridLayout)
     gridLayout = new QGridLayout();
     gridLayout->setContentsMargins(0, 0, 0, 0);
     this->frame->setLayout(gridLayout);
-    
+
     setWidgetsOnGrid(gridLayout, widgets);
+
+    qDebug() << "-------1------";
+    for (int i = 0; i < gridLayout->rowCount(); ++i) {
+        for (int j = 0; j < gridLayout->columnCount(); ++j) {
+            QLayoutItem *item = gridLayout->itemAtPosition(i, j);
+            if (item) {
+                QWidget *widget = item->widget();
+                if (ResizableFrame *resizableFrame = qobject_cast<ResizableFrame*>(widget)) {
+                    qDebug() << "frame: " << resizableFrame->farbe << " row: " << resizableFrame->property("gridRow").toString() << " column: " << resizableFrame->property("gridColumn").toString() << " rowspan: " << resizableFrame->property("gridRowSpan").toString() << " columnspan: " << resizableFrame->property("gridColumnSpan").toString();
+                }
+            }
+        }
+    }
+    qDebug() << "-------2------";  
 }
 
 QList<QWidget*> GridItemMover::saveGridWidgetsToList(const QGridLayout &gridLayout)
@@ -310,6 +370,7 @@ QList<QWidget*> GridItemMover::saveGridWidgetsToList(const QGridLayout &gridLayo
             if (item) {
                 QWidget *widget = item->widget();
                 if (ResizableFrame *resizableFrame = qobject_cast<ResizableFrame*>(widget)) {
+                    qDebug() << "frame: " << resizableFrame->farbe << " row: " << resizableFrame->property("gridRow").toString() << " column: " << resizableFrame->property("gridColumn").toString() << " rowspan: " << resizableFrame->property("gridRowSpan").toString() << " columnspan: " << resizableFrame->property("gridColumnSpan").toString();
                     setWidgetProperties(gridLayout, resizableFrame);
                     widgets.append(widget); 
                 }
@@ -332,7 +393,6 @@ void GridItemMover::adjustWidgetsRowColumn(const QGridLayout &gridLayout, QList<
             changeColumn(widgets, i); 
         }
     }
-    
 }
 
 bool GridItemMover::isItemInColumn(const QGridLayout &gridLayout, const int &index)
